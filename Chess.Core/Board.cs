@@ -1,5 +1,7 @@
 ﻿using Chess.Core.Pieces;
 using Newtonsoft.Json;
+using System.ComponentModel;
+
 
 namespace Chess.Core
 {
@@ -11,6 +13,7 @@ namespace Chess.Core
 
     public class Board
     {
+        public bool positionDone = false;
         #region delegates / events
 
         //event is called on main form constructor
@@ -67,8 +70,14 @@ namespace Chess.Core
                 _blackKingLocation = new BoardLocation(0, 4);
                 _whiteKingLocation = new BoardLocation(7, 4);
             }
+            else
+            {
+                Add960Pieces();
+                _blackKingLocation = new BoardLocation(0, 4);
+                _whiteKingLocation = new BoardLocation(7, 4);
+            }
         }
-         
+
         // overload to allow custom board
         public Board(Tile[,] tiles)
         {
@@ -142,6 +151,94 @@ namespace Chess.Core
             }
         }
 
+        private void Add960Pieces()
+        {
+            List<int> availPos = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7 };
+
+            int bishopPos1 = 0;
+            int bishopPos2 = 0;
+            int queenPos = 0;
+            int knightPos1 = 0;
+            int knightPos2 = 0;
+            int rookPos1 = 0;
+            int rookPos2 = 0;
+            int kingPos = 0;
+            // Player 1's back row (white pieces)
+            for (int j = 0; j < 8; j++)
+            {
+                if (j == 1)
+                {
+                    // Adds both white bishops
+                    bishopPos1 = GenerateRandomPosition(new List<int> { 0, 2, 4, 6 });
+                    availPos.Remove(bishopPos1);
+                    bishopPos2 = GenerateRandomPosition(new List<int> { 1, 3, 5, 7 });
+                    availPos.Remove(bishopPos2);
+                    _tiles[7, bishopPos1].Piece = new Bishop('w', 7, bishopPos1);
+                    _tiles[7, bishopPos2].Piece = new Bishop('w', 7, bishopPos2);
+
+                    // Adds white queen
+                    queenPos = GenerateRandomPosition(availPos);
+                    availPos.Remove(queenPos);
+                    _tiles[7, queenPos].Piece = new Queen('w', 7, queenPos);
+
+                    // Adds both white knights
+                    knightPos1 = GenerateRandomPosition(availPos);
+                    availPos.Remove(knightPos1);
+                    knightPos2 = GenerateRandomPosition(availPos);
+                    availPos.Remove(knightPos2);
+                    _tiles[7, knightPos1].Piece = new Knight('w', 7, knightPos1);
+                    _tiles[7, knightPos2].Piece = new Knight('w', 7, knightPos2);
+
+                    // Place the rooks first
+                    rookPos1 = GenerateRandomPosition(availPos);
+                    availPos.Remove(rookPos1);
+                    do
+                    {
+                        rookPos2 = GenerateRandomPosition(availPos);
+                    }
+                    while (Math.Abs(rookPos1 - rookPos2) == 1); // Ensure rooks are not adjacent
+                    availPos.Remove(rookPos2);
+                    _tiles[7, rookPos1].Piece = new Rook('w', 7, rookPos1);
+                    _tiles[7, rookPos2].Piece = new Rook('w', 7, rookPos2);
+
+                    // Place the king between the rooks
+                    int minRook = Math.Min(rookPos1, rookPos2);
+                    int maxRook = Math.Max(rookPos1, rookPos2);
+                    List<int> kingPositions = availPos.Where(x => x > minRook && x < maxRook).ToList();
+
+                    // Ensure there are valid positions for the king
+                    if (kingPositions.Count == 0)
+                    {
+                        Add960Pieces(); // Retry if no valid positions for the king
+                        return;
+                    }
+
+                    kingPos = GenerateRandomPosition(kingPositions);
+                    availPos.Remove(kingPos);
+                    _tiles[7, kingPos].Piece = new King('w', 7, kingPos);
+                }
+            }
+
+            // Mirror the white pieces' positions for black pieces
+            _tiles[0, bishopPos1].Piece = new Bishop('b', 0, bishopPos1);
+            _tiles[0, bishopPos2].Piece = new Bishop('b', 0, bishopPos2);
+            _tiles[0, queenPos].Piece = new Queen('b', 0, queenPos);
+            _tiles[0, knightPos1].Piece = new Knight('b', 0, knightPos1);
+            _tiles[0, knightPos2].Piece = new Knight('b', 0, knightPos2);
+            _tiles[0, rookPos1].Piece = new Rook('b', 0, rookPos1);
+            _tiles[0, rookPos2].Piece = new Rook('b', 0, rookPos2);
+            _tiles[0, kingPos].Piece = new King('b', 0, kingPos);
+
+            // Add pawns for both players
+            for (int j = 0; j < 8; j++)
+            {
+                _tiles[1, j].Piece = new Pawn('b', 1, j); // Adds 8 black pawns to the 2nd row
+                _tiles[6, j].Piece = new Pawn('w', 6, j); // Adds 8 white pawns to the 7th row
+            }
+        }
+
+        
+
         private void UpdateKingPosition(char color, int row, int col)
         {
             if (color == 'w')
@@ -157,8 +254,8 @@ namespace Chess.Core
         public bool TryMakeMove(Tile? from, Tile? to)
         {
             if (_gameOver) return false;
-            if (from.Piece is null) return false;  
-            
+            if (from.Piece is null) return false;
+
 
             // validates that the selected piece can move to the selected tile
             if (!Movement.MoveIsValid(this, from, to))
@@ -215,6 +312,18 @@ namespace Chess.Core
             if (_gameOver) _gameOver = false;
             if (_kingInCheck != null) _kingInCheck = null;
 
+        }
+
+        public int GenerateRandomPosition(List<int> positions)
+        {
+            if (positions.Count == 0)
+            {
+                throw new InvalidOperationException("No positions available to generate a random position.");
+            }
+
+            Random rnd = new Random();
+            int randPos = rnd.Next(positions.Count);
+            return positions[randPos];
         }
 
         #region add/get/remove pieces and tiles

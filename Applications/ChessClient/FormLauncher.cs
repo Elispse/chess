@@ -76,10 +76,12 @@ public partial class FormLauncher : Form
                 FormUDPClient frmClient = new FormUDPClient(frmHostServer.Username, ipAddress, port);
                 frmClient.Show();
             }
-
         }
+    }
 
-
-
+    private void Chess960_Click(object sender, EventArgs e)
+    {
+        FormPlayerVsPlayer960 frmPvP = new FormPlayerVsPlayer960();
+        frmPvP.Show();
     }
 }
